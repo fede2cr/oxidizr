@@ -52,10 +52,11 @@ prepare: |
   pushd "$SPREAD_PATH"
 
   if [[ ! -f "$PWD/target/debug/oxidizr" ]]; then
-    apt-get update
-    apt-get install -y build-essential
-    snap install --classic rustup
-    rustup default stable
+    tdnf update -y
+    #apt-get update
+    #apt-get install -y build-essential
+    #snap install --classic rustup
+    #rustup default stable
     cargo build
   fi
 

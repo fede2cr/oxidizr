@@ -119,7 +119,8 @@ fn main() -> Result<()> {
     // Exit if the application is run on a non-Ubuntu machine (unless compatibility check is skipped).
     if !args.no_compatibility_check {
         anyhow::ensure!(
-            system.distribution()?.id == "Ubuntu",
+            //system.distribution()?.id == "Ubuntu",
+            system.distribution()?.id == "azurelinux",
             "This program only supports Ubuntu"
         );
     } else if system.distribution()?.id != "Ubuntu" {
