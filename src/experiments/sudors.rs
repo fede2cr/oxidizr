@@ -106,7 +106,7 @@ mod tests {
         assert!(sudors.enable().is_ok());
 
         let commands = runner.commands.clone().into_inner();
-        assert_eq!(commands, &["apt-get install -y sudo-rs"]);
+        assert_eq!(commands, &["tdnf install -y sudo-rs"]);
 
         let backed_up_files = runner.backed_up_files.clone().into_inner();
         let expected = vec![
