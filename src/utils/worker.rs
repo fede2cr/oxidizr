@@ -11,85 +11,40 @@ use which::which;
 use super::{Command, Distribution};
 
 pub trait Worker {
-    /// Report the distribution information for the system.
-    fn distribution(&self) -> Result<Distribution> {
-        let cmd = Command::build("lsb_release", &["-is"]);
-        let id = self.run(&cmd)?;
-
-        let cmd = Command::build("lsb_release", &["-rs"]);
-        let release = self.run(&cmd)?;
-
-        Ok(Distribution {
-            id: String::from_utf8(id.stdout)?.trim().to_string(),
-            release: String::from_utf8(release.stdout)?.trim().to_string(),
-        })
-    }
-
-    /// Run a command and return the output. If the command fails, an error will be returned.
+    fn distribution(&self) -> Result<Distribution>;
     fn run(&self, cmd: &Command) -> Result<Output>;
-
-    /// List files in a directory, returning an error if the directory does not exist.
     fn list_files(&self, directory: PathBuf) -> Result<Vec<PathBuf>>;
-
-    /// Find the path to a binary in the system's PATH.
     fn which(&self, binary_name: &str) -> Result<PathBuf>;
-
-    /// Install a package using the system package manager.
-    fn install_package(&self, package: &str) -> Result<()> {
-        let cmd = Command::build("tdnf", &["install", "-y", package]);
-        self.run(&cmd)?;
-        Ok(())
-    }
-
-    /// Remove a package using the system package manager.
-    fn remove_package(&self, package: &str) -> Result<()> {
-        let cmd = Command::build("tdnf", &["remove", "-y", package]);
-        self.run(&cmd)?;
-        Ok(())
-    }
-
-    /// Update the package lists using the system package manager.
-    fn update_package_lists(&self) -> Result<()> {
-        let cmd = Command::build("tdnf", &["update"]);
-        self.run(&cmd)?;
-        Ok(())
-    }
-
-    /// Check if a package is installed using the system package manager.
-    fn check_installed(&self, package: &str) -> Result<bool> {
-        let cmd = Command::build("rpm", &["-q", package]);
-        match self.run(&cmd) {
-            Ok(_) => Ok(true),
-            Err(_) => Ok(false),
-        }
-    }
-
-    /// Replace a file with a symlink. If the target file already exists, it will be backed up.
+    fn install_package(&self, package: &str) -> Result<()>;
+    fn remove_package(&self, package: &str) -> Result<()>;
+    fn update_package_lists(&self) -> Result<()>;
+    fn check_installed(&self, package: &str) -> Result<bool>;
     fn replace_file_with_symlink(&self, source: PathBuf, target: PathBuf) -> Result<()>;
-
-    /// Backup a file by copying it to a new file with a `.oxidizr.bak` extension.
     fn backup_file(&self, file: PathBuf) -> Result<()>;
-
-    /// Restore a file from a backup if the backup file exists, warn otherwise.
     fn restore_file(&self, file: PathBuf) -> Result<()>;
-
-    /// Create a symlink from `source` to `target`. If `target` already exists, it will be removed.
     fn create_symlink(&self, source: PathBuf, target: PathBuf) -> Result<()>;
 }
-
 /// A struct representing the system with functions for running commands and manipulating
 /// files on the filesystem.
 #[derive(Clone, Debug)]
-pub struct System {}
+pub struct System {
+    package_manager: PackageManager,
+}
 
 impl System {
     /// Create a new `System` instance.
     pub fn new() -> Result<Self> {
-        Ok(Self {})
+        let dist = get_distribution()?;
+        let package_manager = PackageManager::from_distribution(&dist);
+        Ok(Self { package_manager })
     }
 }
 
 impl Worker for System {
+    fn distribution(&self) -> Result<Distribution> {
+        get_distribution()
+    }
+
     /// Run a command and return the output. If the command fails, an error will be returned.
     fn run(&self, cmd: &Command) -> Result<Output> {
         debug!("Running command: {}", cmd.command());
@@ -132,8 +87,53 @@ impl Worker for System {
         Ok(which(binary_name)?)
     }
 
-    /// Replace a file with a symlink. If the target file already exists, it will be backed up
-    /// before being replaced.
+    /// Install a package using the system package manager.
+    fn install_package(&self, package: &str) -> Result<()> {
+        let cmd = match self.package_manager {
+            PackageManager::Apt => Command::build("apt-get", &["install", "-y", package]),
+            PackageManager::Tdnf => Command::build("tdnf", &["install", "-y", package]),
+            PackageManager::Unknown => anyhow::bail!("Unknown package manager"),
+        };
+        self.run(&cmd)?;
+        Ok(())
+    }
+
+    /// Remove a package using the system package manager.
+    fn remove_package(&self, package: &str) -> Result<()> {
+        let cmd = match self.package_manager {
+            PackageManager::Apt => Command::build("apt-get", &["remove", "-y", package]),
+            PackageManager::Tdnf => Command::build("tdnf", &["remove", "-y", package]),
+            PackageManager::Unknown => anyhow::bail!("Unknown package manager"),
+        };
+        self.run(&cmd)?;
+        Ok(())
+    }
+
+    /// Update the package lists using the system package manager.
+    fn update_package_lists(&self) -> Result<()> {
+        let cmd = match self.package_manager {
+            PackageManager::Apt => Command::build("apt-get", &["update"]),
+            PackageManager::Tdnf => Command::build("tdnf", &["makecache"]),
+            PackageManager::Unknown => anyhow::bail!("Unknown package manager"),
+        };
+        self.run(&cmd)?;
+        Ok(())
+    }
+
+    /// Check if a package is installed using the system package manager.
+    fn check_installed(&self, package: &str) -> Result<bool> {
+        let cmd = match self.package_manager {
+            PackageManager::Apt => Command::build("dpkg-query", &["-s", package]),
+            PackageManager::Tdnf => Command::build("rpm", &["-q", package]),
+            PackageManager::Unknown => anyhow::bail!("Unknown package manager"),
+        };
+        match self.run(&cmd) {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        }
+    }
+
+    /// Replace a file with a symlink. If the target file already exists, it will be backed up.
     fn replace_file_with_symlink(&self, source: PathBuf, target: PathBuf) -> Result<()> {
         if fs::exists(&target)? {
             if target.is_symlink() {
@@ -148,8 +148,7 @@ impl Worker for System {
         Ok(())
     }
 
-    /// Backup a file by copying it to a new file with the same name, but with a `.oxidizr.bak`
-    /// extension.
+    /// Backup a file by copying it to a new file with a `.oxidizr.bak` extension.
     fn backup_file(&self, file: PathBuf) -> Result<()> {
         let backup_file = backup_filename(&file);
         trace!("Backing up {} -> {}", file.display(), backup_file.display());
@@ -163,8 +162,7 @@ impl Worker for System {
         Ok(())
     }
 
-    /// Restore a file from a backup. If the backup file does not exist, the original file will be
-    /// left untouched.
+    /// Restore a file from a backup if the backup file exists, warn otherwise.
     fn restore_file(&self, file: PathBuf) -> Result<()> {
         let backup_file = backup_filename(&file);
 
@@ -178,8 +176,7 @@ impl Worker for System {
         Ok(())
     }
 
-    /// Create a symlink from `source` to `target`. If `target` already exists, it will be
-    /// removed and overwritten with the symlink.
+    /// Create a symlink from `source` to `target`. If `target` already exists, it will be removed.
     fn create_symlink(&self, source: PathBuf, target: PathBuf) -> Result<()> {
         trace!("Symlinking {} -> {}", source.display(), target.display());
         remove_file_if_exists(&target)?;
@@ -231,4 +228,36 @@ mod tests {
         let backup = backup_filename(&file);
         assert_eq!(backup, PathBuf::from("..hidden.oxidizr.bak"));
     }
+}
+
+#[derive(Clone, Debug)]
+pub enum PackageManager {
+    Apt,
+    Tdnf,
+    Unknown,
+}
+
+impl PackageManager {
+    pub fn from_distribution(dist: &Distribution) -> Self {
+        match dist.id.to_lowercase().as_str() {
+            "ubuntu" | "debian" => PackageManager::Apt,
+            "azurelinux" => PackageManager::Tdnf,
+            _ => PackageManager::Unknown,
+        }
+    }
+}
+
+// Add this helper function near the top or bottom of your file:
+fn get_distribution() -> Result<Distribution> {
+    let id_output = std::process::Command::new("lsb_release")
+        .arg("-is")
+        .output()?;
+    let release_output = std::process::Command::new("lsb_release")
+        .arg("-rs")
+        .output()?;
+
+    Ok(Distribution {
+        id: String::from_utf8(id_output.stdout)?.trim().to_string(),
+        release: String::from_utf8(release_output.stdout)?.trim().to_string(),
+    })
 }
