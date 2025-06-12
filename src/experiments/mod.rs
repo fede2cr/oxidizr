@@ -1,6 +1,6 @@
 mod sudors;
 mod uutils;
-use crate::utils::Worker;
+use crate::System;
 use anyhow::Result;
 use std::path::PathBuf;
 pub use sudors::SudoRsExperiment;
@@ -68,9 +68,9 @@ impl Experiment<'_> {
     }
 }
 
-pub fn all_experiments<'a>(system: &'a impl Worker) -> Vec<Experiment<'a>> {
+pub fn all_experiments(system: &System) -> Vec<Experiment> {
     vec![
-        Experiment::Uutils(UutilsExperiment::<'a>::new(
+        Experiment::Uutils(UutilsExperiment::new(
             "coreutils",
             system,
             "rust-coreutils",
@@ -78,7 +78,7 @@ pub fn all_experiments<'a>(system: &'a impl Worker) -> Vec<Experiment<'a>> {
             Some(PathBuf::from("/usr/bin/coreutils")),
             PathBuf::from("/usr/lib/cargo/bin/coreutils"),
         )),
-        Experiment::Uutils(UutilsExperiment::<'a>::new(
+        Experiment::Uutils(UutilsExperiment::new(
             "diffutils",
             system,
             "rust-diffutils",
@@ -86,7 +86,7 @@ pub fn all_experiments<'a>(system: &'a impl Worker) -> Vec<Experiment<'a>> {
             Some(PathBuf::from("/usr/lib/cargo/bin/diffutils/diffutils")),
             PathBuf::from("/usr/lib/cargo/bin/diffutils"),
         )),
-        Experiment::Uutils(UutilsExperiment::<'a>::new(
+        Experiment::Uutils(UutilsExperiment::new(
             "findutils",
             system,
             "rust-findutils",
@@ -94,6 +94,6 @@ pub fn all_experiments<'a>(system: &'a impl Worker) -> Vec<Experiment<'a>> {
             None,
             PathBuf::from("/usr/lib/cargo/bin/findutils"),
         )),
-        Experiment::SudoRs(SudoRsExperiment::<'a>::new(system)),
+        Experiment::SudoRs(SudoRsExperiment::new(system)),
     ]
 }
