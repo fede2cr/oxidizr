@@ -124,7 +124,7 @@ fn main() -> Result<()> {
     if !args.no_compatibility_check {
         anyhow::ensure!(
             !matches!(pm, PackageManager::Unknown),
-            "This program only supports Ubuntu, Debian, or AzureLinux"
+            "This program only supports Ubuntu, Debian, AzureLinux or Fedora"
         );
     } else if matches!(pm, PackageManager::Unknown) {
         warn!("Running on an unsupported distribution. This is unsupported and may cause system instability.");

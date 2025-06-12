@@ -92,6 +92,7 @@ impl Worker for System {
         let cmd = match self.package_manager {
             PackageManager::Apt => Command::build("apt-get", &["install", "-y", package]),
             PackageManager::Tdnf => Command::build("tdnf", &["install", "-y", package]),
+            PackageManager::Dnf => Command::build("dnf", &["install", "-y", package]),
             PackageManager::Unknown => anyhow::bail!("Unknown package manager"),
         };
         self.run(&cmd)?;
@@ -103,6 +104,7 @@ impl Worker for System {
         let cmd = match self.package_manager {
             PackageManager::Apt => Command::build("apt-get", &["remove", "-y", package]),
             PackageManager::Tdnf => Command::build("tdnf", &["remove", "-y", package]),
+            PackageManager::Dnf => Command::build("dnf", &["remove", "-y", package]),
             PackageManager::Unknown => anyhow::bail!("Unknown package manager"),
         };
         self.run(&cmd)?;
@@ -114,6 +116,7 @@ impl Worker for System {
         let cmd = match self.package_manager {
             PackageManager::Apt => Command::build("apt-get", &["update"]),
             PackageManager::Tdnf => Command::build("tdnf", &["makecache"]),
+            PackageManager::Dnf => Command::build("dnf", &["makecache"]),
             PackageManager::Unknown => anyhow::bail!("Unknown package manager"),
         };
         self.run(&cmd)?;
@@ -125,6 +128,7 @@ impl Worker for System {
         let cmd = match self.package_manager {
             PackageManager::Apt => Command::build("dpkg-query", &["-s", package]),
             PackageManager::Tdnf => Command::build("rpm", &["-q", package]),
+            PackageManager::Dnf => Command::build("rpm", &["-q", package]),
             PackageManager::Unknown => anyhow::bail!("Unknown package manager"),
         };
         match self.run(&cmd) {
@@ -234,6 +238,7 @@ mod tests {
 pub enum PackageManager {
     Apt,
     Tdnf,
+    Dnf,
     Unknown,
 }
 
@@ -242,6 +247,7 @@ impl PackageManager {
         match dist.id.to_lowercase().as_str() {
             "ubuntu" | "debian" => PackageManager::Apt,
             "azurelinux" => PackageManager::Tdnf,
+            "fedora" => PackageManager::Dnf,
             _ => PackageManager::Unknown,
         }
     }
