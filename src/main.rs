@@ -38,7 +38,8 @@ use experiments::{all_experiments, Experiment};
 use inquire::Confirm;
 use tracing::{info, warn};
 use tracing_subscriber::{fmt, prelude::*};
-use utils::{vecs_eq, System, Worker};
+use crate::utils::{PackageManager, System, Worker};
+use crate::utils::vecs_eq;
 
 /// A command-line utility to install modern Rust-based replacements of essential
 /// packages such as coreutils, findutils, diffutils and sudo and make them the
@@ -116,15 +117,17 @@ fn main() -> Result<()> {
     // Initialise the system, gather system information.
     let system = System::new()?;
 
-    // Exit if the application is run on a non-Ubuntu machine (unless compatibility check is skipped).
+    // Exit if the application is run on an unsupported machine (unless compatibility check is skipped).
+    let dist = system.distribution()?;
+    let pm = PackageManager::from_distribution(&dist);
+
     if !args.no_compatibility_check {
         anyhow::ensure!(
-            //system.distribution()?.id == "Ubuntu",
-            system.distribution()?.id == "azurelinux",
-            "This program only supports Ubuntu"
+            !matches!(pm, PackageManager::Unknown),
+            "This program only supports Ubuntu, Debian, or AzureLinux"
         );
-    } else if system.distribution()?.id != "Ubuntu" {
-        warn!("Running on a non-Ubuntu distribution. This is unsupported and may cause system instability.");
+    } else if matches!(pm, PackageManager::Unknown) {
+        warn!("Running on an unsupported distribution. This is unsupported and may cause system instability.");
     }
 
     // Get selected experiments from the command line arguments

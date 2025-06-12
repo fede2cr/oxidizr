@@ -1,11 +1,11 @@
 mod command;
-mod worker;
+pub mod worker;
 
 use std::collections::HashSet;
 use std::hash::Hash;
 
 pub use command::*;
-pub use worker::*;
+pub use worker::{PackageManager, System, Worker};
 
 #[cfg(test)]
 mod worker_mock;
