@@ -38,7 +38,8 @@ use experiments::{all_experiments, Experiment};
 use inquire::Confirm;
 use tracing::{info, warn};
 use tracing_subscriber::{fmt, prelude::*};
-use utils::{vecs_eq, System, Worker};
+use utils::{vecs_eq, SupportedLinuxDistribution, System, Worker};
+use sys_info::linux_os_release;
 
 /// A command-line utility to install modern Rust-based replacements of essential
 /// packages such as coreutils, findutils, diffutils and sudo and make them the
@@ -114,18 +115,15 @@ fn main() -> Result<()> {
         .init();
 
     // Initialise the system, gather system information.
-    let system = System::new()?;
-
-    // Exit if the application is run on a non-Ubuntu machine (unless compatibility check is skipped).
-    if !args.no_compatibility_check {
-        anyhow::ensure!(
-            system.distribution()?.id == "Ubuntu",
-            "This program only supports Ubuntu"
-        );
-    } else if system.distribution()?.id != "Ubuntu" {
-        warn!("Running on a non-Ubuntu distribution. This is unsupported and may cause system instability.");
-    }
-
+    let linux_os_release = linux_os_release()
+        .map_err(|e| anyhow::anyhow!("Failed to get Linux OS release information: {}", e))?;
+    let pretty_name = linux_os_release.pretty_name.clone();
+    tracing::info!("Running on: {:?}", linux_os_release.pretty_name);
+    let linux_distribution: SupportedLinuxDistribution =
+        linux_os_release.try_into().map_err(|e| anyhow::anyhow!("Failed to parse Linux OS release: {}", e))?;
+    tracing::info!("Parsed Linux distribution: {:?}", linux_distribution);
+    linux_distribution.check_compatibility_status(args.no_compatibility_check);
+    let system = System::new(linux_distribution)?;
     // Get selected experiments from the command line arguments
     let selected = selected_experiments(args.all, args.experiments.clone(), &system);
 
@@ -138,7 +136,7 @@ fn main() -> Result<()> {
 
 /// Enables selected experiments
 fn enable(
-    system: &impl Worker,
+    system: &System,
     experiments: Vec<Experiment>,
     yes: bool,
     no_compatibility_check: bool,
@@ -167,8 +165,8 @@ fn disable(experiments: Vec<Experiment<'_>>, yes: bool) -> Result<()> {
 fn selected_experiments(
     all: bool,
     selected: Vec<String>,
-    system: &impl Worker,
-) -> Vec<Experiment<'_>> {
+    system: &System,
+) -> Vec<Experiment> {
     let all_experiments = all_experiments(system);
     let default_experiments = default_experiments();
 

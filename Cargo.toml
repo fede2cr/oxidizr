@@ -12,3 +12,4 @@ clap-verbosity-flag = { version = "3.0.2", features = ["tracing"] }
 uzers = "0.12.1"
 inquire = "0.7.5"
 which = "7.0.2"
+sys-info = "0.9.1"

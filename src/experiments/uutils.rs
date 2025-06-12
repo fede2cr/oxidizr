@@ -1,23 +1,23 @@
-use crate::utils::Worker;
+use crate::utils::{System, Worker};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use tracing::info;
 
 /// An experiment to install and configure a Rust-based replacement for a system utility.
-pub struct UutilsExperiment<'a> {
+pub struct UutilsExperiment {
     name: String,
-    system: &'a dyn Worker,
+    system: System,
     package: String,
     first_supported_release: String,
     unified_binary: Option<PathBuf>,
     bin_directory: PathBuf,
 }
 
-impl<'a> UutilsExperiment<'a> {
+impl UutilsExperiment {
     /// Create a new UutilsExperiment.
     pub fn new(
         name: &str,
-        system: &'a dyn Worker,
+        system: &System,
         package: &str,
         first_supported_release: &str,
         unified_binary: Option<PathBuf>,
@@ -25,7 +25,7 @@ impl<'a> UutilsExperiment<'a> {
     ) -> Self {
         Self {
             name: name.to_string(),
-            system,
+            system: system.clone(),
             package: package.to_string(),
             first_supported_release: first_supported_release.to_string(),
             unified_binary,
