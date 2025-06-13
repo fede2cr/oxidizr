@@ -53,8 +53,8 @@ impl<'a> UutilsExperiment<'a> {
     }
 
     /// Report the name of the experiment.
-    pub fn name(&self) -> String {
-        self.name.clone()
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     /// Enable the experiment by installing and configuring the package.
@@ -102,7 +102,7 @@ impl<'a> UutilsExperiment<'a> {
     }
 
     pub fn package_name_for(&self, pm: &PackageManager) -> String {
-        match (self.name().as_str(), pm) {
+        match (self.name(), pm) {
             ("coreutils", PackageManager::Apt) => "rust-coreutils".to_string(),
             ("coreutils", PackageManager::Tdnf) => "rust-coreutils".to_string(),
             ("coreutils", PackageManager::Dnf) => "uutils-coreutils".to_string(),

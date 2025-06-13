@@ -23,7 +23,6 @@ pub trait Worker {
     fn backup_file(&self, file: PathBuf) -> Result<()>;
     fn restore_file(&self, file: PathBuf) -> Result<()>;
     fn create_symlink(&self, source: PathBuf, target: PathBuf) -> Result<()>;
-    fn package_name_for(&self, pm: &PackageManager) -> String;
 }
 /// A struct representing the system with functions for running commands and manipulating
 /// files on the filesystem.
@@ -188,16 +187,6 @@ impl Worker for System {
         std::os::unix::fs::symlink(source, target)?;
         Ok(())
     }
-
-    fn package_name_for(&self, pm: &PackageManager) -> String {
-        match (self.name().as_str(), pm) {
-            ("coreutils", PackageManager::Apt) => "rust-coreutils".to_string(),
-            ("coreutils", PackageManager::Tdnf) => "rust-coreutils".to_string(),
-            ("coreutils", PackageManager::Dnf) => "uutils-coreutils".to_string(),
-            // Add more mappings as needed
-            (name, _) => name.to_string(), // fallback to experiment name
-        }
-    }
 }
 
 /// Generate a backup filename. For a given file `/path/to/file`, the backup filename will be
@@ -277,4 +266,14 @@ fn get_distribution() -> Result<Distribution> {
         id: String::from_utf8(id_output.stdout)?.trim().to_string(),
         release: String::from_utf8(release_output.stdout)?.trim().to_string(),
     })
+}
+
+pub struct Experiment {
+    name: String,
+}
+
+impl Experiment {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }

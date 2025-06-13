@@ -15,7 +15,7 @@ pub enum Experiment<'a> {
 impl Experiment<'_> {
     pub fn name(&self) -> String {
         match self {
-            Experiment::Uutils(uutils) => uutils.name(),
+            Experiment::Uutils(uutils) => uutils.name().to_string(),
             Experiment::SudoRs(sudors) => sudors.name(),
         }
     }
