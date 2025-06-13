@@ -59,8 +59,11 @@ impl<'a> UutilsExperiment<'a> {
 
     /// Enable the experiment by installing and configuring the package.
     pub fn enable(&self) -> Result<()> {
+        let dist = self.system.distribution()?;
+        let pm = PackageManager::from_distribution(&dist);
         info!("Installing and configuring {}", self.package);
-        self.system.install_package(&self.package)?;
+        let pkg_name = self.package_name_for(&pm);
+        self.system.install_package(&pkg_name)?;
 
         let files = self.system.list_files(self.bin_directory.clone())?;
 
