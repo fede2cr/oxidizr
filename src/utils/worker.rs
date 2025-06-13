@@ -23,6 +23,7 @@ pub trait Worker {
     fn backup_file(&self, file: PathBuf) -> Result<()>;
     fn restore_file(&self, file: PathBuf) -> Result<()>;
     fn create_symlink(&self, source: PathBuf, target: PathBuf) -> Result<()>;
+    fn package_name_for(&self, pm: &PackageManager) -> String;
 }
 /// A struct representing the system with functions for running commands and manipulating
 /// files on the filesystem.
@@ -186,6 +187,16 @@ impl Worker for System {
         remove_file_if_exists(&target)?;
         std::os::unix::fs::symlink(source, target)?;
         Ok(())
+    }
+
+    fn package_name_for(&self, pm: &PackageManager) -> String {
+        match (self.name().as_str(), pm) {
+            ("coreutils", PackageManager::Apt) => "rust-coreutils".to_string(),
+            ("coreutils", PackageManager::Tdnf) => "rust-coreutils".to_string(),
+            ("coreutils", PackageManager::Dnf) => "uutils-coreutils".to_string(),
+            // Add more mappings as needed
+            (name, _) => name.to_string(), // fallback to experiment name
+        }
     }
 }
 
