@@ -1,4 +1,4 @@
-use crate::utils::Worker;
+use crate::utils::{PackageManager, Worker};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use tracing::info;
@@ -99,6 +99,16 @@ impl<'a> UutilsExperiment<'a> {
         self.system.remove_package(&self.package)?;
 
         Ok(())
+    }
+
+    pub fn package_name_for(&self, pm: &PackageManager) -> String {
+        match (self.name().as_str(), pm) {
+            ("coreutils", PackageManager::Apt) => "rust-coreutils".to_string(),
+            ("coreutils", PackageManager::Tdnf) => "rust-coreutils".to_string(),
+            ("coreutils", PackageManager::Dnf) => "uutils-coreutils".to_string(),
+            // Add more mappings as needed
+            (name, _) => name.to_string(), // fallback to experiment name
+        }
     }
 }
 
